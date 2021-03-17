@@ -3,6 +3,7 @@ namespace BuildingRegistry.Projections.Legacy
     using Be.Vlaanderen.Basisregisters.ProjectionHandling.Runner;
     using BuildingDetail;
     using BuildingPersistentIdCrabIdMapping;
+    using BuildingLinkedDataEventStream;
     using BuildingSyndication;
     using BuildingUnitDetail;
     using Infrastructure;
@@ -27,6 +28,9 @@ namespace BuildingRegistry.Projections.Legacy
         public DbSet<BuildingUnitDetailListCountView> BuildingUnitDetailListCountView { get; set; }
 
         public DbSet<BuildingPersistentLocalIdCrabIdMapping> BuildingPersistentIdCrabIdMappings { get; set; }
+
+        public DbSet<BuildingLinkedDataEventStreamItem> BuildingLinkedDataEventStream { get; set; }
+        public DbSet<BuildingUnitLinkedDataEventStreamItem> BuildingUnitLinkedDataEventStream { get; set; }
 
         public LegacyContext() { }
 

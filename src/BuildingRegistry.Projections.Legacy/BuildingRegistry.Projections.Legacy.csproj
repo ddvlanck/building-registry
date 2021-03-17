@@ -1,5 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <Import Project="..\..\packages\Be.Vlaanderen.Basisregisters.Build.Pipeline\Content\Be.Vlaanderen.Basisregisters.Build.Pipeline.Settings.Library.props" />
+  <ItemGroup>
+    <None Remove="BuildingLinkedDataEventStream\BuildingRegistryLinkedDataEventStreamProjections.cs~RF5b3bc266.TMP" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\BuildingRegistry.Infrastructure\BuildingRegistry.Infrastructure.csproj" />

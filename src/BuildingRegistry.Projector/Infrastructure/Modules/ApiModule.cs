@@ -19,6 +19,7 @@ namespace BuildingRegistry.Projector.Infrastructure.Modules
     using BuildingRegistry.Projections.LastChangedList;
     using BuildingRegistry.Projections.Legacy;
     using BuildingRegistry.Projections.Legacy.BuildingDetail;
+    using BuildingRegistry.Projections.Legacy.BuildingLinkedDataEventStream;
     using BuildingRegistry.Projections.Legacy.BuildingPersistentIdCrabIdMapping;
     using BuildingRegistry.Projections.Legacy.BuildingSyndication;
     using BuildingRegistry.Projections.Legacy.BuildingUnitDetail;
@@ -162,6 +163,9 @@ namespace BuildingRegistry.Projector.Infrastructure.Modules
                     ConnectedProjectionSettings.Default)
                 .RegisterProjections<BuildingPersistenLocalIdCrabIdProjections, LegacyContext>(
                     () => new BuildingPersistenLocalIdCrabIdProjections(),
+                    ConnectedProjectionSettings.Default)
+                .RegisterProjections<BuildingRegistryLinkedDataEventStreamProjections, LegacyContext>(
+                    () => new BuildingRegistryLinkedDataEventStreamProjections(),
                     ConnectedProjectionSettings.Default);
         }
 
