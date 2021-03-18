@@ -91,6 +91,15 @@ namespace BuildingRegistry.Projections.Legacy.BuildingLinkedDataEventStream
 
             When<Envelope<BuildingPersistentLocalIdWasAssigned>>(async (context, message, ct) =>
             {
+                await context.CreateNewBuildingLinkedDataEventStreamItem(
+                    message.Message.BuildingId,
+                    message,
+                    x =>
+                    {
+                        x.PersistentLocalId = message.Message.PersistentLocalId;
+                    },
+                    false, ct);
+
                 await context.UpdateBuildingPersistentLocalIdentifier(
                     message.Message.BuildingId,
                     message.Message.PersistentLocalId,
@@ -517,6 +526,18 @@ namespace BuildingRegistry.Projections.Legacy.BuildingLinkedDataEventStream
 
             When<Envelope<BuildingUnitPersistentLocalIdWasAssigned>>(async (context, message, ct) =>
             {
+                await context.CreateNewBuildingSyndicationItem(
+                    message.Message.BuildingId,
+                    message,
+                    x =>
+                    {
+                        var unit = x.BuildingUnits.SingleOrDefault(y => y.BuildingUnitId == message.Message.BuildingUnitId);
+
+                        if (unit != null)
+                            unit.PersistentLocalId = message.Message.PersistentLocalId;
+                    },
+                    ct);
+
                 await context.UpdateBuildingUnitPersistentLocalIdentifier(
                     message.Message.BuildingUnitId,
                     message.Message.PersistentLocalId,

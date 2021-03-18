@@ -26,10 +26,11 @@ namespace BuildingRegistry.Projections.Legacy.BuildingLinkedDataEventStream
                     .BuildingUnitLinkedDataEventStream
                     .Local
                     .Where(x => x.BuildingUnitId == buildingUnitId).ToList()
-                ?? await context
-                    .BuildingUnitLinkedDataEventStream
-                    .Where(x => x.BuildingUnitId == buildingUnitId)
-                    .ToListAsync(ct);
+                    .Union(await context
+                        .BuildingUnitLinkedDataEventStream
+                        .Where(x => x.BuildingUnitId == buildingUnitId)
+                        .ToListAsync(ct)
+                    );
 
             foreach (var item in buildingUnitItems)
                 item.PersistentLocalId = persistentLocalId;

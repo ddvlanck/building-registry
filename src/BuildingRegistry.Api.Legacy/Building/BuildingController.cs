@@ -326,7 +326,7 @@ namespace BuildingRegistry.Api.Legacy.Building
             return new GeoJSONPolygon { Coordinates = output };
         }
 
-        private static GmlPolygon MapGmlPolygon(NetTopologySuite.Geometries.Polygon polygon)
+        internal static GmlPolygon MapGmlPolygon(NetTopologySuite.Geometries.Polygon polygon)
         {
             var gmlPolygon = new GmlPolygon
             {
@@ -441,6 +441,60 @@ namespace BuildingRegistry.Api.Legacy.Building
                 ContentType = MediaTypeNames.Text.Xml,
                 StatusCode = StatusCodes.Status200OK
             };
+        }
+
+        /// <summary>
+        /// Vraag een lijst met wijzigingen van gebouwen op, semantisch geannoteerd (Linked Data Event Stream).
+        /// </summary>
+        /// <param name="configuration"></param>
+        /// <param name="context"></param>
+        /// <param name="responseOptions"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        [HttpGet("linked-data-event-stream")]
+        [Produces("application/ld+json")]
+        [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]                     //TODO
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]//TODO
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]//TODO
+        [SwaggerResponseExample(StatusCodes.Status200OK, typeof(BuildingSyndicationResponseExamples))]//TODO
+        [SwaggerResponseExample(StatusCodes.Status400BadRequest, typeof(BadRequestResponseExamples))]//TODO
+        [SwaggerResponseExample(StatusCodes.Status500InternalServerError, typeof(InternalServerErrorResponseExamples))]//TODO
+        public async Task<IActionResult> LinkedDataEventStream(
+            [FromServices] LinkedDataEventStreamConfiguration configuration,
+            [FromServices] LegacyContext context,
+            [FromServices] IOptions<ResponseOptions> responseOptions,
+            CancellationToken cancellationToken = default)
+        {
+            var filtering = Request.ExtractFilteringRequest<BuildingLinkedDataEventStreamFilter>();
+            var sorting = Request.ExtractSortingRequest();
+            var pagination = Request.ExtractPaginationRequest();
+
+            var pagedBuildings = new BuildingLinkedDataEventStreamQuery(
+                context)
+                .Fetch(filtering, sorting, pagination);
+
+            /*var buildingVersionObjects = pagedBuildings
+                .Items
+                .Select(x => new BuildingVersionObject(
+                    configuration,
+                    x.ObjectIdentifier,
+                    x.PersistentLocalId,
+                    x.ChangeType,
+                    x.EventGeneratedAtTime,
+                    x.Geometry,
+                    x.GeometryMethod,
+                    x.Status,
+                    x.BuildingUnitsIds))
+                .ToList();
+
+            return Ok(new BuildingLinkedDataEventStreamResponse
+            {
+                Id = new Uri("https://http://Example.org"),
+                CollectionLink = new Uri("htps://tes"),
+                Buildings = buildingVersionObjects
+            });*/
+
+            return Ok(pagedBuildings);
         }
 
         private static async Task<string> BuildAtomFeed(

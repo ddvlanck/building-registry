@@ -104,10 +104,11 @@ namespace BuildingRegistry.Projections.Legacy.BuildingLinkedDataEventStream
                     .BuildingLinkedDataEventStream
                     .Local
                     .Where(x => x.BuildingId == buildingId).ToList()
-                ?? await context
-                    .BuildingLinkedDataEventStream
-                    .Where(x => x.BuildingId == buildingId)
-                    .ToListAsync(ct);
+                    .Union(await context
+                        .BuildingLinkedDataEventStream
+                        .Where(x => x.BuildingId == buildingId)
+                        .ToListAsync(ct)
+                    );
 
             foreach (var item in buildingItems)
                 item.PersistentLocalId = persistentLocalId;
@@ -124,10 +125,11 @@ namespace BuildingRegistry.Projections.Legacy.BuildingLinkedDataEventStream
                     .BuildingLinkedDataEventStream
                     .Local
                     .Where(x => x.BuildingId == buildingId).ToList()
-                ?? await context
-                    .BuildingLinkedDataEventStream
-                    .Where(x => x.BuildingId == buildingId)
-                    .ToListAsync(ct);
+                    .Union(await context
+                        .BuildingLinkedDataEventStream
+                        .Where(x => x.BuildingId == buildingId)
+                        .ToListAsync(ct)
+                    );
 
             foreach (var item in buildingItems)
                 item.RecordCanBePublished = false;
