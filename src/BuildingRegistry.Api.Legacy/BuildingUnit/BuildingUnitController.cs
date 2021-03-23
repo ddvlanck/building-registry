@@ -27,6 +27,7 @@ namespace BuildingRegistry.Api.Legacy.BuildingUnit
     using Infrastructure;
     using ValueObjects;
     using ProblemDetails = Be.Vlaanderen.Basisregisters.BasicApiProblem.ProblemDetails;
+    using System.Collections.Generic;
 
     [ApiVersion("1.0")]
     [AdvertiseApiVersions("1.0")]
@@ -187,6 +188,107 @@ namespace BuildingRegistry.Api.Legacy.BuildingUnit
                 addressPersistentLocalIds.Select(id => new GebouweenheidDetailAdres(id, string.Format(responseOptions.Value.AdresUrl, id))).ToList());
 
             return Ok(response);
+        }
+
+        /// <summary>
+        /// Vraag een lijst van wijzigingen van gebouweenheden op, semantisch geannoteerd (Linked Data Event Stream).
+        /// </summary>
+        /// <param name="context"></param>
+        /// <param name="responseOptions"></param>
+        /// <param name="persistentLocalId"></param>
+        /// <param name="cancellationToken"></param>
+        [HttpGet("linked-data-event-stream")]
+        [Produces("application/ld+json")]
+        [ProducesResponseType(typeof(BuildingUnitLinkedDataEventStreamResponse), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+        [SwaggerResponseExample(StatusCodes.Status200OK, typeof(BuildingUnitLinkedDataEventStreamResponseExamples))]
+        [SwaggerResponseExample(StatusCodes.Status404NotFound, typeof(BuildingUnitNotFoundResponseExamples))]
+        public async Task<IActionResult> LinkedDataEventStream(
+            [FromServices] LinkedDataEventStreamConfiguration configuration,
+            [FromServices] LegacyContext context,
+            [FromServices] SyndicationContext syndicationContext,
+            [FromServices] IOptions<ResponseOptions> responseOptions,
+            [FromRoute] int persistentLocalId,
+            CancellationToken cancellationToken = default)
+        {
+            var filtering = Request.ExtractFilteringRequest<BuildingUnitLinkedDataEventStreamFilter>();
+            var sorting = Request.ExtractSortingRequest();
+            var pagination = Request.ExtractPaginationRequest();
+
+            var xPaginationHeader = Request.Headers["x-pagination"].ToString().Split(",");
+            var offset = Int32.Parse(xPaginationHeader[0]);
+            var pageSize = Int32.Parse(xPaginationHeader[1]);
+            var page = (offset / pageSize) + 1;
+
+            var pagedBuildingUnits = new BuildingUnitLinkedDataEventStreamQuery(
+                context)
+                .Fetch(filtering, sorting, pagination);
+
+            List<BuildingUnitVersionObject> pagedBuildingUnitVersionObjects = new List<BuildingUnitVersionObject>();
+
+            foreach(var pagedBuildingUnit in pagedBuildingUnits.Items)
+            {
+                var building = await context
+                    .BuildingUnitBuildings
+                    .AsNoTracking()
+                    .SingleOrDefaultAsync(x => x.BuildingId == pagedBuildingUnit.BuildingId);
+
+                var addressIds = pagedBuildingUnit.AddressIds.ToList();
+                var addressPersistentLocalIds = await syndicationContext
+                    .AddressPersistentLocalIds
+                    .Where(x => addressIds.Contains(x.AddressId))
+                    .Select(x => x.PersistentLocalId)
+                    .ToListAsync(cancellationToken);
+
+
+                pagedBuildingUnitVersionObjects.Add(new BuildingUnitVersionObject(
+                    configuration,
+                    pagedBuildingUnit.ObjectIdentifier,
+                    pagedBuildingUnit.PersistentLocalId,
+                    pagedBuildingUnit.ChangeType,
+                    pagedBuildingUnit.EventGeneratedAtTime,
+                    pagedBuildingUnit.Geometry,
+                    pagedBuildingUnit.GeometryMethod,
+                    pagedBuildingUnit.Status,
+                    pagedBuildingUnit.Function,
+                    (int)building.BuildingPersistentLocalId,
+                    addressPersistentLocalIds));
+            }
+
+            return Ok(new BuildingUnitLinkedDataEventStreamResponse
+            {
+                Id = BuildingUnitLinkedDataEventStreamMetadata.GetPageIdentifier(configuration, page),
+                CollectionLink = BuildingUnitLinkedDataEventStreamMetadata.GetCollectionLink(configuration),
+                BuildingShape = BuildingUnitLinkedDataEventStreamMetadata.GetShapeUri(configuration),
+                HypermediaControls = BuildingUnitLinkedDataEventStreamMetadata.GetHypermediaControls(pagedBuildingUnitVersionObjects, configuration, page, pageSize),
+                BuildingUnits = pagedBuildingUnitVersionObjects
+            });
+        }
+
+        /// <summary>
+        /// Vraag de SHACL shape van gebouweenheden op.
+        /// </summary>
+        /// <param name="configuration"></param>
+        /// <param name="context"></param>
+        /// <param name="responseOptions"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        [HttpGet("linked-data-event-stream/shape")]
+        [Produces("application/ld+json")]
+        [ProducesResponseType(typeof(BuildingUnitShaclShapeResponse), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+        [SwaggerResponseExample(StatusCodes.Status200OK, typeof(BuildingUnitShaclShapeResponseExamples))]
+        [SwaggerResponseExample(StatusCodes.Status400BadRequest, typeof(BadRequestResponseExamples))]
+        public async Task<IActionResult> Shape(
+            [FromServices] LinkedDataEventStreamConfiguration configuration,
+            [FromServices] LegacyContext context,
+            [FromServices] IOptions<ResponseOptions> responseOptions,
+            CancellationToken cancellationToken = default)
+        {
+            return Ok(new BuildingUnitShaclShapeResponse
+            {
+                Id = new Uri($"{configuration.BuildingUnitApiEndpoint}/shape")
+            });
         }
 
         private static PositieGeometrieMethode MapBuildingUnitGeometryMethod(

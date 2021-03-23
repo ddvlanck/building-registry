@@ -27,8 +27,7 @@ namespace BuildingRegistry.Api.Legacy.Building.Query
 
         public Instant EventGeneratedAtTime { get; }
 
-        public virtual List<int> BuildingUnitsIds { get; }
-
+        public virtual List<int> BuildingUnitsIds { get; set; }
         public string ObjectIdentifier { get; }
 
         public BuildingLinkedDataEventStreamQueryResult(
@@ -39,7 +38,7 @@ namespace BuildingRegistry.Api.Legacy.Building.Query
             byte[] geometry,
             BuildingGeometryMethod geometryMethod,
             BuildingStatus status,
-            List<int> buildingUnitsIds)
+            Collection<BuildingUnitLinkedDataEventStreamItem> buildingUnits)
         {
             ObjectIdentifier = objectIdentifier;
             PersistentLocalId = persistentLocalId;
@@ -49,7 +48,7 @@ namespace BuildingRegistry.Api.Legacy.Building.Query
             Geometry = geometry;
             GeometryMethod = geometryMethod;
             Status = status;
-            BuildingUnitsIds = buildingUnitsIds;
+            BuildingUnitsIds = buildingUnits.Select(x => (int) x.PersistentLocalId).ToList();
         }
     }
 
@@ -72,7 +71,7 @@ namespace BuildingRegistry.Api.Legacy.Building.Query
                 linkedDataEventStreamItem.Geometry,
                 (BuildingGeometryMethod)linkedDataEventStreamItem.GeometryMethod,
                 (BuildingStatus)linkedDataEventStreamItem.Status,
-                linkedDataEventStreamItem.BuildingUnits.Select(x => (int) x.PersistentLocalId).ToList());
+                linkedDataEventStreamItem.BuildingUnits);
         }
 
         protected override IQueryable<BuildingLinkedDataEventStreamItem> Filter(FilteringHeader<BuildingLinkedDataEventStreamFilter> filtering)

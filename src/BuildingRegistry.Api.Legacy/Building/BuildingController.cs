@@ -326,7 +326,7 @@ namespace BuildingRegistry.Api.Legacy.Building
             return new GeoJSONPolygon { Coordinates = output };
         }
 
-        internal static GmlPolygon MapGmlPolygon(NetTopologySuite.Geometries.Polygon polygon)
+        private static GmlPolygon MapGmlPolygon(NetTopologySuite.Geometries.Polygon polygon)
         {
             var gmlPolygon = new GmlPolygon
             {
@@ -453,12 +453,10 @@ namespace BuildingRegistry.Api.Legacy.Building
         /// <returns></returns>
         [HttpGet("linked-data-event-stream")]
         [Produces("application/ld+json")]
-        [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]                     //TODO
-        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]//TODO
-        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]//TODO
-        [SwaggerResponseExample(StatusCodes.Status200OK, typeof(BuildingSyndicationResponseExamples))]//TODO
-        [SwaggerResponseExample(StatusCodes.Status400BadRequest, typeof(BadRequestResponseExamples))]//TODO
-        [SwaggerResponseExample(StatusCodes.Status500InternalServerError, typeof(InternalServerErrorResponseExamples))]//TODO
+        [ProducesResponseType(typeof(BuildingLinkedDataEventStreamResponse), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+        [SwaggerResponseExample(StatusCodes.Status200OK, typeof(BuildingLinkedDataEventStreamResponseExamples))]
+        [SwaggerResponseExample(StatusCodes.Status400BadRequest, typeof(BadRequestResponseExamples))]
         public async Task<IActionResult> LinkedDataEventStream(
             [FromServices] LinkedDataEventStreamConfiguration configuration,
             [FromServices] LegacyContext context,
@@ -469,11 +467,16 @@ namespace BuildingRegistry.Api.Legacy.Building
             var sorting = Request.ExtractSortingRequest();
             var pagination = Request.ExtractPaginationRequest();
 
+            var xPaginationHeader = Request.Headers["x-pagination"].ToString().Split(",");
+            var offset = Int32.Parse(xPaginationHeader[0]);
+            var pageSize = Int32.Parse(xPaginationHeader[1]);
+            var page = (offset / pageSize) + 1;
+
             var pagedBuildings = new BuildingLinkedDataEventStreamQuery(
                 context)
                 .Fetch(filtering, sorting, pagination);
 
-            /*var buildingVersionObjects = pagedBuildings
+            var buildingVersionObjects = pagedBuildings
                 .Items
                 .Select(x => new BuildingVersionObject(
                     configuration,
@@ -489,12 +492,38 @@ namespace BuildingRegistry.Api.Legacy.Building
 
             return Ok(new BuildingLinkedDataEventStreamResponse
             {
-                Id = new Uri("https://http://Example.org"),
-                CollectionLink = new Uri("htps://tes"),
+                Id = BuildingLinkedDataEventStreamMetadata.GetPageIdentifier(configuration, page),
+                CollectionLink = BuildingLinkedDataEventStreamMetadata.GetCollectionLink(configuration),
+                BuildingShape = BuildingLinkedDataEventStreamMetadata.GetShapeUri(configuration),
+                HypermediaControls = BuildingLinkedDataEventStreamMetadata.GetHypermediaControls(buildingVersionObjects, configuration, page, pageSize),
                 Buildings = buildingVersionObjects
-            });*/
+            }) ;
+        }
 
-            return Ok(pagedBuildings);
+        /// <summary>
+        /// Vraag de SHACL shape van gebouwen op.
+        /// </summary>
+        /// <param name="configuration"></param>
+        /// <param name="context"></param>
+        /// <param name="responseOptions"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        [HttpGet("linked-data-event-stream/shape")]
+        [Produces("application/ld+json")]
+        [ProducesResponseType(typeof(BuildingShaclShapeResponse), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+        [SwaggerResponseExample(StatusCodes.Status200OK, typeof(BuildingShaclShapeResponseExamples))]
+        [SwaggerResponseExample(StatusCodes.Status400BadRequest, typeof(BadRequestResponseExamples))]
+        public async Task<IActionResult> Shape(
+            [FromServices] LinkedDataEventStreamConfiguration configuration,
+            [FromServices] LegacyContext context,
+            [FromServices] IOptions<ResponseOptions> responseOptions,
+            CancellationToken cancellationToken = default)
+        {
+            return Ok(new BuildingShaclShapeResponse
+            {
+                Id = new Uri($"{configuration.ApiEndpoint}/shape")
+            });
         }
 
         private static async Task<string> BuildAtomFeed(
